@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { NotificationIndicator } from "@/components/notifications-indicator";
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -22,7 +23,9 @@ import {
   Plus,
   Menu,
   X,
-  Activity
+  Activity,
+  AlertCircle,
+  Bell
 } from "lucide-react";
 
 export function Navigation() {
@@ -40,6 +43,8 @@ export function Navigation() {
     { name: "Health Analysis", href: "/dashboard/health-analysis", icon: Activity },
     { name: "AI Assistant", href: "/dashboard/ai", icon: MessageSquare },
     { name: "Family", href: "/dashboard/family", icon: Users },
+    { name: "Emergency", href: "/dashboard/emergency", icon: AlertCircle },
+    { name: "Notifications", href: "/dashboard/notifications", icon: Bell },
   ];
 
   const isActive = (href: string) => {
@@ -91,6 +96,7 @@ export function Navigation() {
 
           {/* Desktop: Quick actions and user menu */}
           <div className="hidden md:flex md:items-center md:space-x-4">
+            <NotificationIndicator />
             <Link href="/dashboard/records/new">
               <Button size="sm">
                 <Plus className="w-4 h-4 mr-2" />
@@ -139,6 +145,7 @@ export function Navigation() {
 
           {/* Mobile: Hamburger menu and user avatar */}
           <div className="md:hidden flex items-center space-x-2">
+            <NotificationIndicator />
             <Link href="/dashboard/records/new">
               <Button size="sm" variant="ghost">
                 <Plus className="w-4 h-4" />

@@ -38,24 +38,27 @@ model Session {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String    @unique
-  emailVerified DateTime?
-  image         String?
-  password      String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id              String    @id @default(cuid())
+  name            String?
+  email           String    @unique
+  emailVerified   DateTime?
+  image           String?
+  password        String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   // Relations
-  accounts      Account[]
-  sessions      Session[]
-  healthRecords HealthRecord[]
-  familyMembers FamilyMember[] @relation("FamilyPrimary")
-  memberOf      FamilyMember[] @relation("FamilyMember")
-  aiInteractions AIInteraction[]
-  aiUsageStats  AIUsageStats?
-  healthAnalyses HealthAnalysis[]
+  accounts        Account[]
+  sessions        Session[]
+  healthRecords   HealthRecord[]
+  familyMembers   FamilyMember[] @relation("FamilyPrimary")
+  memberOf        FamilyMember[] @relation("FamilyMember")
+  aiInteractions  AIInteraction[]
+  aiUsageStats    AIUsageStats?
+  healthAnalyses  HealthAnalysis[]
+  familyInvitations FamilyInvitation[]
+  emergencyContacts EmergencyContact[]
+  notifications   Notification[]
 
   @@map("users")
 }
@@ -165,4 +168,59 @@ model HealthAnalysis {
   user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("health_analyses")
+}
+
+model FamilyInvitation {
+  id          String    @id @default(cuid())
+  email       String
+  token       String    @unique
+  permission  String    @default("view") // view, edit, admin
+  expires     DateTime
+  accepted    Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  
+  // Relations
+  fromUserId  String
+  fromUser    User      @relation(fields: [fromUserId], references: [id], onDelete: Cascade)
+
+  @@index([email])
+  @@map("family_invitations")
+}
+
+model EmergencyContact {
+  id           String   @id @default(cuid())
+  name         String
+  relationship String
+  phoneNumber  String
+  email        String?
+  address      String?
+  notes        String?
+  isActive     Boolean  @default(true)
+  userId       String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  // Relations
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("emergency_contacts")
+}
+
+model Notification {
+  id             String   @id @default(cuid())
+  title          String
+  message        String
+  type           String   // info, warning, alert, reminder
+  isRead         Boolean  @default(false)
+  userId         String
+  relatedRecordId String?
+  createdAt      DateTime @default(now())
+  
+  // Relations
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+  @@map("notifications")
 }
