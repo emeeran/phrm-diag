@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
         data: {
           userId: user.id,
           summary: interactionResult.summary,
-          trends: interactionResult.interactions,
+          trends: JSON.stringify(interactionResult.interactions),
           recordsAnalyzed: medications.length,
           aiModelUsed: "gpt-4", // Hard-coded as this always uses GPT-4
           cost: 0, // We don't have this info directly

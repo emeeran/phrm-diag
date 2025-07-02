@@ -12,7 +12,7 @@ export default async function EditHealthRecordPage({ params }: { params: { id: s
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-2xl mx-auto">
         <h1 className="text-2xl font-bold mb-6">Edit Health Record</h1>
-        <HealthRecordEditForm recordId={params.id} user={session.user} />
+        <HealthRecordEditForm recordId={params.id} user={{ email: session.user?.email as string }} />
       </div>
     </div>
   );

@@ -33,8 +33,8 @@ export default async function AIChatPage() {
           </div>
         </div>
         <AIChat user={{
-          email: session.user.email as string,
-          name: session.user.name || undefined
+          email: session.user?.email as string,
+          name: session.user?.name || undefined
         }} />
       </div>
     </div>
