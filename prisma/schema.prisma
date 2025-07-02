@@ -54,6 +54,8 @@ model User {
   familyMembers FamilyMember[] @relation("FamilyPrimary")
   memberOf      FamilyMember[] @relation("FamilyMember")
   aiInteractions AIInteraction[]
+  aiUsageStats  AIUsageStats?
+  healthAnalyses HealthAnalysis[]
 
   @@map("users")
 }
@@ -120,6 +122,10 @@ model AIInteraction {
   response  String   @db.Text
   modelUsed String   // local, openai, claude, etc.
   cost      Float    @default(0)
+  promptTokens Int    @default(0)
+  completionTokens Int @default(0)
+  totalTokens Int     @default(0)
+  complexity  Int     @default(0) // 1-10 scale
   createdAt DateTime @default(now())
   
   // Relations
@@ -127,4 +133,36 @@ model AIInteraction {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("ai_interactions")
+}
+
+model AIUsageStats {
+  userId      String   @id
+  totalCost   Float    @default(0)
+  tokenCount  Int      @default(0)
+  usageCount  Int      @default(0)
+  lastUsedAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("ai_usage_stats")
+}
+
+model HealthAnalysis {
+  id              String    @id @default(cuid())
+  userId          String
+  summary         String    @db.Text
+  trends          Json      // Stores array of trend objects
+  recordsAnalyzed Int
+  aiModelUsed     String
+  cost            Float     @default(0)
+  analysisType    String    // 'trends', 'medication', 'risk'
+  createdAt       DateTime  @default(now())
+  
+  // Relations
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("health_analyses")
 }

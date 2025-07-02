@@ -1,10 +1,11 @@
 import './globals.css'
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
 import { AuthProvider } from '@/lib/auth-provider'
 import { Toaster } from '@/components/ui/toaster'
+import { Navigation } from '@/components/navigation'
+import { ErrorBoundary } from '@/components/ui/error-boundary'
 
-const inter = Inter({ subsets: ['latin'] })
+// Using system fonts instead of Google Fonts to avoid network issues
 
 export const metadata: Metadata = {
   title: 'PHRM - Personal Health Record Manager',
@@ -18,10 +19,15 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>
+      <body className="font-sans">
         <AuthProvider>
-          {children}
-          <Toaster />
+          <ErrorBoundary>
+            <Navigation />
+            <main className="min-h-screen bg-gray-50">
+              {children}
+            </main>
+            <Toaster />
+          </ErrorBoundary>
         </AuthProvider>
       </body>
     </html>
