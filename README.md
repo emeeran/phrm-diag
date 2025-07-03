@@ -7,9 +7,41 @@ A comprehensive web application for securely managing personal and family health
 ### Prerequisites
 
 - Node.js 18+ and npm/yarn
-- Docker and Docker Compose
-- Git
-- OpenAI API Key (for AI features)
+- Docker and Docker Com### 🚀 Deployment
+
+For detailed deployment instructions, see `DEPLOYMENT.md`, which includes:
+- Vercel configuration
+- Environment variables setup
+- Database migration process
+- Post-deployment checks
+
+## 🔒 Security Features
+
+The PHRM-Diag application includes the following security features:
+
+- **Authentication**
+  - Password hashing with bcrypt
+  - Multi-factor authentication (TOTP)
+  - Session management and login monitoring
+  - Account lockout after failed login attempts
+  - Secure session expiration
+
+- **Data Protection**
+  - AES-256 encryption for sensitive data
+  - Client-side encryption for file storage
+  - S3 secure file storage with encryption
+  - Audit logging for all critical actions
+  - Data backup and recovery procedures
+
+- **API Security**
+  - Rate limiting to prevent abuse
+  - Input sanitization to prevent XSS
+  - CSRF protection
+  - Secure headers
+
+## 🤝 Contributing
+
+This project follows the task list defined in `TASK_LIST.md`. Each module builds upon the previous with specific deliverables and success criteria.- OpenAI API Key (for AI features)
 
 ### Setup Instructions
 
@@ -328,5 +360,5 @@ For questions or issues:
 
 ---
 
-**Current Status: Module 1 (Weeks 5-6) Completed ✅**
-**Next Phase: Module 2 - Family Management (Weeks 7-8)**
+**Current Status: Module 4 - Security & Compliance (Weeks 11-12) Completed ✅**
+**Next Phase: Module 5 - Analytics & Insights (Weeks 13-14)**

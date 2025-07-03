@@ -44,9 +44,29 @@ model User {
   emailVerified   DateTime?
   image           String?
   password        String?
+  role            String    @default("USER") // USER, ADMIN
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
+  // Security features for Module 4
+  mfaEnabled      Boolean   @default(false)
+  mfaSecret       String?   @db.Text
+  mfaBackupCodes  String?   @db.Text // JSON array of backup codes
+  lastLoginAt     DateTime?
+  lastLoginIp     String?
+  failedLoginAttempts Int    @default(0)
+  accountLocked   Boolean   @default(false)
+  lockExpires     DateTime?
+  
+  // Consent management
+  consentSettings String?   @db.Text // JSON object of consent settings
+  dataRetentionPeriod String? // 1year, 3years, 7years, indefinite
+  marketingConsent Boolean   @default(false)
+  analyticsConsent Boolean   @default(false)
+  aiProcessingConsent Boolean @default(true)
+  dataProcessingVersion Int  @default(1) // Version of consent the user agreed to
+  lastConsentUpdate DateTime?
+  
   // Relations
   accounts        Account[]
   sessions        Session[]
@@ -59,6 +79,10 @@ model User {
   familyInvitations FamilyInvitation[]
   emergencyContacts EmergencyContact[]
   notifications   Notification[]
+  auditLogs       AuditLog[]
+  dataExports     DataExport[]
+  securityEvents  SecurityEvent[] @relation("UserSecurityEvents")
+  resolvedEvents  SecurityEvent[] @relation("UserResolvedEvents")
 
   @@map("users")
 }
@@ -223,4 +247,71 @@ model Notification {
   @@index([userId])
   @@index([isRead])
   @@map("notifications")
+}
+
+model AuditLog {
+  id            String   @id @default(cuid())
+  userId        String
+  action        String   // login, logout, create, update, delete, download, etc.
+  resourceType  String   // user, healthRecord, document, etc.
+  resourceId    String?  // ID of the affected resource
+  description   String?  @db.Text
+  ipAddress     String?
+  userAgent     String?  @db.Text
+  createdAt     DateTime @default(now())
+  
+  // Relations
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model DataExport {
+  id            String   @id @default(cuid())
+  userId        String
+  status        String   // requested, processing, completed, failed
+  fileUrl       String?  // URL to the exported data file
+  expiresAt     DateTime? // When the export download link expires
+  requestedAt   DateTime @default(now())
+  completedAt   DateTime?
+  format        String   @default("json") // json, csv, etc.
+  includesHealthRecords Boolean @default(true)
+  includesDocuments Boolean @default(true)
+  includesAiInteractions Boolean @default(true)
+  
+  // Relations
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("data_exports")
+}
+
+model SecurityEvent {
+  id            String   @id @default(cuid())
+  eventType     String   // failed_login, suspicious_activity, brute_force_attempt, vulnerability_attempt
+  userId        String?
+  email         String?
+  ipAddress     String?
+  userAgent     String?  @db.Text
+  details       String?  @db.Text
+  notes         String?  @db.Text
+  severity      String   @default("medium") // low, medium, high, critical
+  resolved      Boolean  @default(false)
+  resolvedById  String?
+  resolvedAt    DateTime?
+  createdAt     DateTime @default(now())
+  
+  // Relations
+  user          User?    @relation("UserSecurityEvents", fields: [userId], references: [id], onDelete: SetNull)
+  resolvedBy    User?    @relation("UserResolvedEvents", fields: [resolvedById], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([resolvedById])
+  @@index([eventType])
+  @@index([ipAddress])
+  @@index([createdAt])
+  @@map("security_events")
 }
