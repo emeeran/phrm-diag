@@ -76,6 +76,8 @@ model User {
   aiInteractions  AIInteraction[]
   aiUsageStats    AIUsageStats?
   healthAnalyses  HealthAnalysis[]
+  predictiveInsights PredictiveInsight[]
+  healthAlerts   HealthAlert[]
   familyInvitations FamilyInvitation[]
   emergencyContacts EmergencyContact[]
   notifications   Notification[]
@@ -192,6 +194,39 @@ model HealthAnalysis {
   user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("health_analyses")
+}
+
+model PredictiveInsight {
+  id          String   @id @default(cuid())
+  userId      String
+  insightType String   // 'risk', 'recommendations', 'appointments', 'preventive'
+  data        Json     // Stores the prediction data
+  isRead      Boolean  @default(false)
+  validUntil  DateTime // When the prediction expires
+  createdAt   DateTime @default(now())
+  
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("predictive_insights")
+}
+
+model HealthAlert {
+  id          String   @id @default(cuid())
+  userId      String
+  alertType   String   // 'anomaly', 'refill', 'milestone', 'wellness'
+  title       String
+  description String   @db.Text
+  priority    String   // 'low', 'medium', 'high', 'urgent'
+  dismissed   Boolean  @default(false)
+  data        Json     // Alert-specific data
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("health_alerts")
 }
 
 model FamilyInvitation {

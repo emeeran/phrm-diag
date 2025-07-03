@@ -1,7 +1,32 @@
 [project]
 name = "phrm-diag"
 version = "0.1.0"
-description = "Add your description here"
+description = "Personal Health Record Manager with AI Diagnostics - Document Processing Module"
 readme = "README.md"
-requires-python = ">=3.12"
-dependencies = []
+requires-python = ">=3.8"
+dependencies = [
+    "pytesseract",
+    "pillow",
+    "numpy",
+    "pandas",
+    "scikit-learn<1.4.0",
+    "scipy<1.12.0",
+    "fastapi",
+    "uvicorn",
+    "python-multipart",
+    "opencv-python-headless",
+    "pdf2image",
+    "spacy",
+    "networkx",
+    "dateparser",
+    "transformers",
+    "gensim"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "black",
+    "isort",
+    "mypy"
+]

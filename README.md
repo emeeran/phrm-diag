@@ -256,6 +256,51 @@ phrm-diag/
 └── types/                 # TypeScript type definitions
 ```
 
+## ⚡ Performance Optimization Utilities
+
+PHRM-Diag includes advanced performance optimizations for both frontend and backend:
+
+### Frontend
+- **Code Splitting & Lazy Loading**: Use `withLazyLoading` from `lib/lazy-loading.tsx` to dynamically load heavy React components only when needed.
+- **Optimized Images**: Use `components/ui/optimized-image.tsx` for images with automatic CDN, lazy loading, and placeholder support.
+- **Client-side Caching**: Use hooks and utilities from `lib/cache.ts` for memory, localStorage, and sessionStorage caching, plus `useCachedFetch` for cached API requests.
+- **Bundle Analysis**: Run `npm run build:analyze` to analyze and optimize bundle size. See `next.config.js` for advanced chunking and image optimization.
+
+### Backend
+- **API Response Caching**: Use `withCache` and helpers from `lib/api-cache.ts` to cache API responses, add ETag/conditional requests, and rate limiting.
+- **Database Query Optimization**: Use `optimizedPrismaClient` from `lib/database-optimization.ts` for efficient, batched, and monitored queries.
+- **Connection Pooling**: Use `getConnectionPool` from `lib/connection-pool.ts` for singleton Prisma client and pool monitoring.
+- **Background Jobs**: Use `lib/background-jobs.ts` for background job queueing, scheduling, and monitoring (e.g., analytics, notifications).
+
+#### Example Usage
+
+- **Lazy Loading a Component:**
+  ```tsx
+  import { withLazyLoading } from '@/lib/lazy-loading';
+  const LazyHeavyComponent = withLazyLoading(() => import('@/components/HeavyComponent'));
+  // ...
+  <LazyHeavyComponent />
+  ```
+- **Optimized Image:**
+  ```tsx
+  import OptimizedImage from '@/components/ui/optimized-image';
+  <OptimizedImage src="/images/hero.jpg" alt="Hero" width={800} height={400} />
+  ```
+- **Cached API Fetch:**
+  ```tsx
+  import { useCachedFetch } from '@/lib/cache';
+  const { data, loading, error } = useCachedFetch('/api/analytics');
+  ```
+- **API Route Caching:**
+  ```ts
+  import { withCache } from '@/lib/api-cache';
+  export const GET = withCache(async (req) => { /* ... */ });
+  ```
+
+See the respective files in `lib/` and `components/ui/` for more details and advanced options.
+
+---
+
 ## 🧪 Testing
 
 ```bash
@@ -360,5 +405,5 @@ For questions or issues:
 
 ---
 
-**Current Status: Module 4 - Security & Compliance (Weeks 11-12) Completed ✅**
-**Next Phase: Module 5 - Analytics & Insights (Weeks 13-14)**
+**Current Status: Module 5 - Analytics & Insights (Week 13) Completed ✅**
+**Next Phase: Module 5 - Analytics & Insights (Week 14) - Predictive Features**

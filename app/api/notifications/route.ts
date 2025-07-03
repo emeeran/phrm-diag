@@ -2,58 +2,55 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { withCache } from '@/lib/api-cache';
+import { optimizedPrismaClient } from '@/lib/database-optimization';
+import { getConnectionPool } from '@/lib/connection-pool';
 
 // GET: Get all notifications for the current user
 export async function GET(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  
-  if (!session || !session.user || !session.user.email) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-  
-  try {
-    const user = await prisma.user.findUnique({ 
-      where: { email: session.user.email } 
-    });
-    
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+  return withCache(async () => {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user || !session.user.email) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    
-    // Get query parameters
-    const url = new URL(req.url);
-    const onlyUnread = url.searchParams.get('unread') === 'true';
-    const limit = url.searchParams.get('limit');
-    
-    const notifications = await prisma.notification.findMany({
-      where: {
-        userId: user.id,
-        ...(onlyUnread ? { isRead: false } : {})
-      },
-      orderBy: {
-        createdAt: 'desc'
-      },
-      take: limit ? parseInt(limit) : undefined
-    });
-    
-    const count = await prisma.notification.count({
-      where: {
-        userId: user.id,
-        isRead: false
+    try {
+      const pool = await getConnectionPool();
+      const user = await pool.user.findUnique({ where: { email: session.user.email } });
+      if (!user) {
+        return NextResponse.json({ error: 'User not found' }, { status: 404 });
       }
-    });
-    
-    return NextResponse.json({
-      notifications,
-      unreadCount: count
-    });
-  } catch (error) {
-    console.error('Error fetching notifications:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch notifications' },
-      { status: 500 }
-    );
-  }
+      const url = new URL(req.url);
+      const onlyUnread = url.searchParams.get('unread') === 'true';
+      const limit = url.searchParams.get('limit');
+      const notifications = await optimizedPrismaClient.findManyOptimized(
+        'notification',
+        {
+          where: {
+            userId: user.id,
+            ...(onlyUnread ? { isRead: false } : {})
+          },
+          orderBy: { createdAt: 'desc' },
+          take: limit ? parseInt(limit) : undefined
+        },
+        { enableCache: true, ttl: 2 * 60 * 1000, queryHint: 'notifications_list' }
+      );
+      const count = await pool.notification.count({
+        where: { userId: user.id, isRead: false }
+      });
+      return NextResponse.json({ notifications, unreadCount: count });
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+      return NextResponse.json(
+        { error: 'Failed to fetch notifications' },
+        { status: 500 }
+      );
+    }
+  }, {
+    cacheKey: `notifications-list-${req.nextUrl.searchParams.toString()}`,
+    ttl: 2 * 60 * 1000,
+    revalidateOnStale: true,
+    tags: ['notifications', 'user-data']
+  });
 }
 
 // POST: Create a new notification (typically used by system)

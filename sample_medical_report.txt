@@ -1,0 +1,40 @@
+Patient: John Doe
+Date: July 3, 2025
+DOB: January 15, 1975
+
+CHIEF COMPLAINT:
+Follow-up for hypertension and diabetes management.
+
+HISTORY OF PRESENT ILLNESS:
+Patient reports improved blood sugar control since last visit. Blood pressure has been stable on current medication regimen. Patient denies chest pain, shortness of breath, or other cardiovascular symptoms.
+
+CURRENT MEDICATIONS:
+- Lisinopril 20mg daily for hypertension
+- Metformin 1000mg twice daily for diabetes
+- Atorvastatin 40mg nightly for hyperlipidemia
+
+VITAL SIGNS:
+Blood Pressure: 128/82 mmHg
+Heart Rate: 72 bpm
+Weight: 178 lbs
+Temperature: 98.6°F
+
+LABORATORY RESULTS:
+- HbA1c: 6.8% (improved from 7.2%)
+- Fasting glucose: 135 mg/dL
+- Total cholesterol: 185 mg/dL
+- LDL: 110 mg/dL
+- HDL: 45 mg/dL
+
+ASSESSMENT:
+1. Hypertension - well controlled
+2. Type 2 diabetes mellitus - improving control
+3. Hyperlipidemia - stable
+
+PLAN:
+1. Continue current medications
+2. Follow-up in 3 months
+3. Continue diet and exercise program
+4. Monitor blood glucose at home
+
+Provider: Dr. Sarah Johnson, MD
