@@ -17,7 +17,7 @@ export const GET = createProtectedHandler(
       );
     }
 
-    const userId = session.user.id as string;
+    const userId = (session.user as any)?.id || session.user?.email as string;
     
     // Check if the user is an admin
     const user = await prisma.user.findUnique({
@@ -75,8 +75,8 @@ export const GET = createProtectedHandler(
       // Create audit log for the request
       await createAuditLog({
         userId,
-        action: "view",
-        resourceType: "security_events",
+        action: "record_updated",
+        resourceType: "system",
         description: "Admin viewed security events",
       });
       

@@ -21,7 +21,7 @@ export async function GET(
       );
     }
 
-    const userId = session.user.id;
+    const userId = (session.user as any)?.id || session.user?.email as string;
     const alertId = params.id;
     
     // Query the database for the alert
@@ -72,7 +72,7 @@ export async function PUT(
       );
     }
 
-    const userId = session.user.id;
+    const userId = (session.user as any)?.id || session.user?.email as string;
     const alertId = params.id;
     const body = await req.json();
     const { dismissed } = body;

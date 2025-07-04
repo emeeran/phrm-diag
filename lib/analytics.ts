@@ -123,7 +123,7 @@ export async function generateHealthAnalytics(
       data: {
         userId,
         summary,
-        trends: analysisData,
+        trends: JSON.stringify(analysisData),
         recordsAnalyzed: healthRecords.length,
         aiModelUsed: 'analytics-engine-v1',
         analysisType,
@@ -321,9 +321,286 @@ async function analyzeMedicationEffectiveness(
         medication.sideEffects.push(record.title);
       }
     }
+
+    // Check for potential interactions with other medications
+    try {
+      // Safety check - only proceed if we have medications to compare
+      if (Object.keys(medications).length > 1) {
+        for (const [otherName, otherMedication] of Object.entries(medications)) {
+          if (otherName !== medicationName) {
+            // More robust interaction check with retry mechanism
+            try {
+              // 1. Check for common side effects
+              const commonSideEffects = medication.sideEffects.filter(se => 
+                otherMedication.sideEffects.includes(se)
+              );
+              
+              // 2. Known medication interaction classes - with retry for reliability
+              const interactionRisks = await withRetry(async () => {
+                return checkMedicationInteractionRisks(medicationName, otherName);
+              }, 2);
+              
+              if (commonSideEffects.length > 0) {
+                medication.interactions.push(`${otherName} (common side effects)`);
+              }
+              
+              // Add specific interaction warnings if available
+              if (interactionRisks.length > 0) {
+                for (const risk of interactionRisks) {
+                  medication.interactions.push(risk);
+                }
+              }
+              
+              // 3. Try to get additional information from external API (when implemented)
+              try {
+                const externalInteractions = await withRetry(() => 
+                  fetchExternalInteractionAPI(medicationName, otherName)
+                );
+                
+                if (externalInteractions.length > 0) {
+                  for (const interaction of externalInteractions) {
+                    medication.interactions.push(interaction);
+                  }
+                }
+              } catch (apiError) {
+                // Just log but don't fail if external API has issues
+                console.error(`External medication API error: ${apiError}`);
+              }
+            } catch (interactionError) {
+              console.error(`Error checking interactions between ${medicationName} and ${otherName}: ${interactionError}`);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error(`Error checking medication interactions: ${error}`);
+      // Don't fail completely, just log the error and continue
+    }
   }
 
   return Object.values(medications);
+}
+
+/**
+ * Check for known medication interaction risks
+ * This is a simplified placeholder - in a real system this would connect to a medication database
+ */
+/**
+ * Check for known medication interaction risks using our local database
+ * This function is synchronous for reliability, with async API calls handled separately
+ */
+function checkMedicationInteractionRisks(med1: string, med2: string): string[] {
+  try {
+    const med1Lower = med1.toLowerCase();
+    const med2Lower = med2.toLowerCase();
+    
+    // Enhanced database of medication interactions
+    const knownInteractions: Record<string, string[]> = {
+      // Blood thinners
+      'warfarin': ['aspirin', 'ibuprofen', 'naproxen', 'citalopram', 'fluoxetine', 'clopidogrel', 
+                  'metronidazole', 'ciprofloxacin', 'levothyroxine', 'amiodarone'],
+      'aspirin': ['warfarin', 'heparin', 'clopidogrel', 'ibuprofen', 'naproxen', 'apixaban', 
+                 'rivaroxaban', 'prednisone', 'venlafaxine'],
+      'clopidogrel': ['omeprazole', 'esomeprazole', 'fluconazole', 'aspirin'],
+      
+      // Blood pressure medications
+      'lisinopril': ['spironolactone', 'potassium supplements', 'potassium salt substitutes',
+                    'lithium', 'nsaids', 'ibuprofen', 'naproxen'],
+      'metoprolol': ['amiodarone', 'diltiazem', 'verapamil', 'fluoxetine', 'paroxetine'],
+      'amlodipine': ['simvastatin', 'atorvastatin', 'grapefruit', 'diltiazem', 'verapamil'],
+      
+      // Cholesterol medications
+      'simvastatin': ['erythromycin', 'clarithromycin', 'itraconazole', 'ketoconazole', 'grapefruit',
+                     'diltiazem', 'amiodarone', 'verapamil', 'amlodipine', 'cyclosporine'],
+      'atorvastatin': ['grapefruit', 'erythromycin', 'clarithromycin', 'itraconazole', 'ritonavir'],
+      
+      // Heart rhythm medications
+      'amiodarone': ['warfarin', 'digoxin', 'simvastatin', 'atorvastatin', 'metoprolol', 'levofloxacin',
+                    'ciprofloxacin', 'citalopram'],
+      'digoxin': ['amiodarone', 'clarithromycin', 'verapamil', 'spironolactone', 'furosemide'],
+      
+      // Antibiotics
+      'ciprofloxacin': ['warfarin', 'amiodarone', 'theophylline', 'metronidazole', 'nsaids'],
+      'clarithromycin': ['simvastatin', 'atorvastatin', 'warfarin', 'digoxin', 'carbamazepine'],
+      'azithromycin': ['pimozide', 'amiodarone', 'warfarin'],
+      
+      // Antidepressants
+      'fluoxetine': ['warfarin', 'nsaids', 'tramadol', 'triptans', 'linezolid', 'monoamine oxidase inhibitors'],
+      'paroxetine': ['tamoxifen', 'warfarin', 'tramadol', 'triptans', 'metoprolol'],
+      'sertraline': ['warfarin', 'nsaids', 'tramadol', 'triptans', 'linezolid'],
+      'venlafaxine': ['linezolid', 'monoamine oxidase inhibitors', 'triptans', 'tramadol'],
+      
+      // Pain medications
+      'tramadol': ['ssris', 'fluoxetine', 'paroxetine', 'sertraline', 'venlafaxine', 'monoamine oxidase inhibitors'],
+      'ibuprofen': ['warfarin', 'aspirin', 'lisinopril', 'diuretics', 'methotrexate'],
+      'naproxen': ['warfarin', 'aspirin', 'lisinopril', 'diuretics', 'methotrexate'],
+      
+      // Diabetes medications
+      'metformin': ['contrast dyes', 'alcohol', 'cimetidine', 'furosemide', 'nifedipine'],
+      'glyburide': ['fluconazole', 'ciprofloxacin', 'nsaids', 'beta blockers', 'warfarin'],
+      
+      // Common supplements
+      'st johns wort': ['warfarin', 'birth control', 'antidepressants', 'digoxin', 'cyclosporine'],
+      'ginkgo biloba': ['warfarin', 'aspirin', 'clopidogrel', 'ibuprofen', 'naproxen'],
+      'ginseng': ['warfarin', 'aspirin', 'heparin', 'insulin', 'antidepressants']
+    };
+    
+    // Common medication classes for broader matching
+    const medicationClasses: Record<string, string[]> = {
+      'nsaids': ['ibuprofen', 'naproxen', 'celecoxib', 'diclofenac', 'indomethacin'],
+      'ssris': ['fluoxetine', 'paroxetine', 'sertraline', 'citalopram', 'escitalopram'],
+      'beta blockers': ['metoprolol', 'atenolol', 'propranolol', 'carvedilol', 'bisoprolol'],
+      'statins': ['simvastatin', 'atorvastatin', 'rosuvastatin', 'pravastatin', 'lovastatin'],
+      'diuretics': ['furosemide', 'hydrochlorothiazide', 'spironolactone', 'chlorthalidone'],
+      'triptans': ['sumatriptan', 'rizatriptan', 'eletriptan', 'zolmitriptan']
+    };
+    
+    // Check for interactions in both directions
+    const interactions: string[] = [];
+    
+    // Direct medicine name matching
+    for (const [baseMed, interactingMeds] of Object.entries(knownInteractions)) {
+      // Check if medication1 contains the base med name
+      if (med1Lower.includes(baseMed)) {
+        // Check if medication2 contains any of the interacting medications
+        for (const interactMed of interactingMeds) {
+          if (med2Lower.includes(interactMed)) {
+            interactions.push(`${med1} may interact with ${med2} (increased risk)`);
+            break;
+          }
+        }
+      }
+      
+      // Check the reverse direction
+      if (med2Lower.includes(baseMed)) {
+        for (const interactMed of interactingMeds) {
+          if (med1Lower.includes(interactMed)) {
+            interactions.push(`${med2} may interact with ${med1} (increased risk)`);
+            break;
+          }
+        }
+      }
+    }
+    
+    // Medication class matching (for broader coverage)
+    for (const [className, medicines] of Object.entries(medicationClasses)) {
+      // Check if medication1 is in this class
+      const med1InClass = medicines.some(med => med1Lower.includes(med));
+      if (med1InClass) {
+        // If med1 is in a class, check if med2 is a base medication that interacts with this class
+        // This helps catch interactions like "ibuprofen (an NSAID) may interact with warfarin"
+        for (const [baseMed, interactingMeds] of Object.entries(knownInteractions)) {
+          if (interactingMeds.includes(className) && med2Lower.includes(baseMed)) {
+            interactions.push(`${med1} (class: ${className}) may interact with ${med2}`);
+          }
+        }
+      }
+      // Check if medication2 is in this class
+      const med2InClass = medicines.some(med => med2Lower.includes(med));
+      if (med2InClass) {
+        // If med2 is in a class, check if med1 is a base medication that interacts with this class
+        // This helps catch interactions like "warfarin may interact with ibuprofen (an NSAID)"
+        for (const [baseMed, interactingMeds] of Object.entries(knownInteractions)) {
+          if (interactingMeds.includes(className) && med1Lower.includes(baseMed)) {
+            interactions.push(`${med2} (class: ${className}) may interact with ${med1}`);
+          }
+        }
+      }
+    }
+    
+    // Note: External API calls are now handled at a higher level
+    // This makes this function synchronous and more reliable
+    
+    return interactions;
+  } catch (error) {
+    console.error(`Error in medication interaction check: ${error}`);
+    // Return an empty array instead of throwing
+    return [];
+  }
+}
+
+/**
+ * Safely retry a function multiple times with exponential backoff
+ * This helps handle transient network issues when checking medication interactions
+ */
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  retries: number = 3,
+  initialDelay: number = 300
+): Promise<T> {
+  let lastError: Error | null = null;
+  
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      console.error(`Attempt ${attempt + 1}/${retries} failed:`, error);
+      lastError = error instanceof Error ? error : new Error(String(error));
+      
+      if (attempt < retries - 1) {
+        // Exponential backoff - wait longer between each retry
+        const delay = initialDelay * Math.pow(2, attempt);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+  
+  throw lastError || new Error("Operation failed after multiple retries");
+}
+
+/**
+ * Placeholder for external medication interaction API integration
+ * In a production environment, this would connect to a professional drug interaction database
+ */
+async function fetchExternalInteractionAPI(med1: string, med2: string): Promise<string[]> {
+  // This is a placeholder for an external API call
+  // In a real system, this would make an HTTP request to a medication interaction API
+  try {
+    // Simulate API latency
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // For demonstration, let's return some realistic response for a few common medications
+    // This would be replaced with actual API logic in production
+    const commonInteractions: Record<string, Record<string, string[]>> = {
+      'warfarin': {
+        'aspirin': ['Increased bleeding risk', 'Monitor for signs of bleeding'],
+        'ibuprofen': ['Increased bleeding risk', 'Consider alternative pain reliever']
+      },
+      'lisinopril': {
+        'spironolactone': ['Increased risk of hyperkalemia', 'Monitor potassium levels'],
+        'potassium': ['Dangerous potassium elevation possible', 'Avoid combination']
+      },
+      'simvastatin': {
+        'grapefruit': ['Increased risk of myopathy', 'Avoid grapefruit consumption'],
+        'amiodarone': ['Increased risk of muscle damage', 'Dose adjustment recommended']
+      }
+    };
+    
+    const med1Lower = med1.toLowerCase();
+    const med2Lower = med2.toLowerCase();
+    
+    // Check for known interactions in our simulated API
+    for (const [baseMed, interactions] of Object.entries(commonInteractions)) {
+      if (med1Lower.includes(baseMed)) {
+        for (const [interactMed, warnings] of Object.entries(interactions)) {
+          if (med2Lower.includes(interactMed)) {
+            return warnings.map(warning => `${med1}-${med2}: ${warning}`);
+          }
+        }
+      } else if (med2Lower.includes(baseMed)) {
+        for (const [interactMed, warnings] of Object.entries(interactions)) {
+          if (med1Lower.includes(interactMed)) {
+            return warnings.map(warning => `${med2}-${med1}: ${warning}`);
+          }
+        }
+      }
+    }
+    
+    return [];
+  } catch (error) {
+    console.error("External medication API error:", error);
+    throw new Error("Error accessing medication interaction database");
+  }
 }
 
 /**
@@ -642,39 +919,88 @@ function generateMedicationSummary(medications: MedicationEffectiveness[]): stri
   
   const summary = [];
   
-  // Count medications
-  summary.push(`Analysis of ${medications.length} medication${medications.length > 1 ? 's' : ''}.`);
-  
-  // Most and least effective medications
-  if (medications.length > 1) {
-    // Sort by effectiveness
-    const sortedByEffectiveness = [...medications].sort((a, b) => b.effectiveness - a.effectiveness);
+  try {
+    // Count medications
+    summary.push(`Analysis of ${medications.length} medication${medications.length > 1 ? 's' : ''}.`);
     
-    const mostEffective = sortedByEffectiveness[0];
-    summary.push(`${mostEffective.medicationName} appears to be the most effective medication with a ${mostEffective.effectiveness}% effectiveness rating.`);
-    
-    if (sortedByEffectiveness.length > 1) {
-      const leastEffective = sortedByEffectiveness[sortedByEffectiveness.length - 1];
-      if (leastEffective.effectiveness < 40) {
-        summary.push(`${leastEffective.medicationName} shows lower effectiveness at ${leastEffective.effectiveness}% and may require reevaluation.`);
+    // Most and least effective medications
+    if (medications.length > 1) {
+      // Sort by effectiveness
+      const sortedByEffectiveness = [...medications].sort((a, b) => b.effectiveness - a.effectiveness);
+      
+      const mostEffective = sortedByEffectiveness[0];
+      summary.push(`${mostEffective.medicationName} appears to be the most effective medication with a ${mostEffective.effectiveness}% effectiveness rating.`);
+      
+      if (sortedByEffectiveness.length > 1) {
+        const leastEffective = sortedByEffectiveness[sortedByEffectiveness.length - 1];
+        if (leastEffective.effectiveness < 40) {
+          summary.push(`${leastEffective.medicationName} shows lower effectiveness at ${leastEffective.effectiveness}% and may require reevaluation.`);
+        }
+      }
+      
+      // Add interaction check summary
+      let hasInteractionWarning = false;
+      for (const med of medications) {
+        if (med.interactions && med.interactions.length > 0) {
+          hasInteractionWarning = true;
+          break;
+        }
+      }
+      
+      if (hasInteractionWarning) {
+        summary.push(`Potential medication interactions detected. Please consult with your healthcare provider.`);
+      }
+      
+      // Adherence insights
+      const lowAdherence = medications.filter(m => m.adherence < 70);
+      if (lowAdherence.length > 0) {
+        const medicationNames = lowAdherence.map(m => m.medicationName).join(', ');
+        summary.push(`Adherence could be improved for: ${medicationNames}.`);
+      }
+      
+      // Side effects insights
+      const withSideEffects = medications.filter(m => m.sideEffects.length > 0);
+      if (withSideEffects.length > 0) {
+        summary.push(`${withSideEffects.length} medication${withSideEffects.length > 1 ? 's have' : ' has'} recorded side effects that may warrant review.`);
+      }
+    } else {
+      // Single medication
+      const medication = medications[0];
+      summary.push(`${medication.medicationName} has an estimated effectiveness rating of ${medication.effectiveness}% and adherence of ${medication.adherence}%.`);
+      // Add interaction info if available
+      if (medication.interactions && medication.interactions.length > 0) {
+        summary.push(`Potential interactions noted: ${medication.interactions.join(', ')}.`);
+      }
+      // Add side effects info if available
+      if (medication.sideEffects && medication.sideEffects.length > 0) {
+        summary.push(`Side effects recorded: ${medication.sideEffects.join(', ')}.`);
       }
     }
-    
-    // Adherence insights
-    const lowAdherence = medications.filter(m => m.adherence < 70);
-    if (lowAdherence.length > 0) {
-      const medicationNames = lowAdherence.map(m => m.medicationName).join(', ');
-      summary.push(`Adherence could be improved for: ${medicationNames}.`);
+  } catch (error) {
+    console.error("Error generating medication summary:", error);
+    if (summary.length === 0) {
+      return "Error analyzing medication data. Please try again later.";
     }
-    
-    // Side effects insights
-    const withSideEffects = medications.filter(m => m.sideEffects.length > 0);
-    if (withSideEffects.length > 0) {
-      summary.push(`${withSideEffects.length} medication${withSideEffects.length > 1 ? 's have' : ' has'} recorded side effects that may warrant review.`);
-    }
-  } else {
-    // Single medication
-    const medication = medications[0];
-    summary.push(`${medication.medicationName} has an estimated effectiveness rating of ${medication.effectiveness}% and adherence of ${medication.adherence}%.`);
-    
-    if
+    // If we already have some summary data, add an error note but return what we have
+    summary.push("Note: Some medication analysis data may be incomplete.");
+  }
+  
+  return summary.join(' ');
+}
+
+/**
+ * Generate a summary for risk score calculation
+ */
+function generateRiskSummary(riskScore: RiskScore): string {
+  let summary = `Your health risk score is ${riskScore.score} (${riskScore.level} risk).`;
+  
+  if (riskScore.factors.length > 0) {
+    summary += ` Factors affecting your score: ${riskScore.factors.join(', ')}.`;
+  }
+  
+  if (riskScore.recommendations.length > 0) {
+    summary += ` Recommendations: ${riskScore.recommendations.join(', ')}.`;
+  }
+  
+  return summary;
+}

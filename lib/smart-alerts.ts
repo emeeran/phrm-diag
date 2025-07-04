@@ -306,6 +306,9 @@ export async function generateWellnessGoalRecommendations(userId: string): Promi
   }
 }
 
+// Alias for compatibility with API route imports
+export const suggestWellnessGoals = generateWellnessGoalRecommendations;
+
 /**
  * Get all active alerts for a user
  */

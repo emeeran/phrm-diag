@@ -7,51 +7,49 @@ import { optimizedPrismaClient } from '@/lib/database-optimization';
 import { getConnectionPool } from '@/lib/connection-pool';
 
 // GET: Get all notifications for the current user
-export async function GET(req: NextRequest) {
-  return withCache(async () => {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user || !session.user.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+const notificationsHandler = async (req: NextRequest) => {
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user || !session.user.email) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  try {
+    const pool = await getConnectionPool();
+    const user = await pool.user.findUnique({ where: { email: session.user.email } });
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
-    try {
-      const pool = await getConnectionPool();
-      const user = await pool.user.findUnique({ where: { email: session.user.email } });
-      if (!user) {
-        return NextResponse.json({ error: 'User not found' }, { status: 404 });
-      }
-      const url = new URL(req.url);
-      const onlyUnread = url.searchParams.get('unread') === 'true';
-      const limit = url.searchParams.get('limit');
-      const notifications = await optimizedPrismaClient.findManyOptimized(
-        'notification',
-        {
-          where: {
-            userId: user.id,
-            ...(onlyUnread ? { isRead: false } : {})
-          },
-          orderBy: { createdAt: 'desc' },
-          take: limit ? parseInt(limit) : undefined
+    const url = new URL(req.url);
+    const onlyUnread = url.searchParams.get('unread') === 'true';
+    const limit = url.searchParams.get('limit');
+    const notifications = await optimizedPrismaClient.findManyOptimized(
+      'notification',
+      {
+        where: {
+          userId: user.id,
+          ...(onlyUnread ? { isRead: false } : {})
         },
-        { enableCache: true, ttl: 2 * 60 * 1000, queryHint: 'notifications_list' }
-      );
-      const count = await pool.notification.count({
-        where: { userId: user.id, isRead: false }
-      });
-      return NextResponse.json({ notifications, unreadCount: count });
-    } catch (error) {
-      console.error('Error fetching notifications:', error);
-      return NextResponse.json(
-        { error: 'Failed to fetch notifications' },
-        { status: 500 }
-      );
-    }
-  }, {
-    cacheKey: `notifications-list-${req.nextUrl.searchParams.toString()}`,
-    ttl: 2 * 60 * 1000,
-    revalidateOnStale: true,
-    tags: ['notifications', 'user-data']
-  });
-}
+        orderBy: { createdAt: 'desc' },
+        take: limit ? parseInt(limit) : undefined
+      },
+      { enableCache: true, ttl: 2 * 60 * 1000, queryHint: 'notifications_list' }
+    );
+    const count = await pool.notification.count({
+      where: { userId: user.id, isRead: false }
+    });
+    return NextResponse.json({ notifications, unreadCount: count });
+  } catch (error) {
+    console.error('Error fetching notifications:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch notifications' },
+      { status: 500 }
+    );
+  }
+};
+
+export const GET = withCache({
+  ttl: 2 * 60 * 1000, // 2 minutes
+  key: 'notifications'
+})(notificationsHandler);
 
 // POST: Create a new notification (typically used by system)
 export async function POST(req: NextRequest) {

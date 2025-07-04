@@ -7,7 +7,10 @@ import { createProtectedHandler } from "@/lib/api-middleware";
 
 // PATCH - update a security event
 export const PATCH = createProtectedHandler(
-  async (req: NextRequest, { params }: { params: { id: string } }) => {
+  async (req: NextRequest, context: { params: Record<string, string> }) => {
+    const { params } = context;
+    const id = params.id;
+    
     // Ensure user is authenticated and is an admin
     const session = await getServerSession(authOptions);
     if (!session?.user) {
@@ -17,7 +20,7 @@ export const PATCH = createProtectedHandler(
       );
     }
 
-    const userId = session.user.id as string;
+    const userId = (session.user as any).id as string;
     const eventId = params.id;
     
     // Check if the user is an admin
@@ -65,8 +68,8 @@ export const PATCH = createProtectedHandler(
       // Create audit log for the update
       await createAuditLog({
         userId,
-        action: "update",
-        resourceType: "security_event",
+        action: "record_updated",
+        resourceType: "system",
         resourceId: eventId,
         description: resolved ? "Admin marked security event as resolved" : "Admin updated security event",
       });

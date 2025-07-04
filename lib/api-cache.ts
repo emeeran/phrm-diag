@@ -5,6 +5,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { memoryCache } from './cache';
 
+// Cache response type for API responses
+export interface CacheResponse {
+  data: any;
+  cached?: boolean;
+  timestamp?: number;
+}
+
 // Cache configuration for different endpoints
 const CACHE_CONFIG = {
   '/api/health-records': { ttl: 5 * 60 * 1000, key: 'health-records' }, // 5 minutes
@@ -41,11 +48,11 @@ export function withAPICache(config?: { ttl?: number; key?: string }) {
       
       // Get cache configuration
       const cacheConfig = config || CACHE_CONFIG[pathname as keyof typeof CACHE_CONFIG];
-      if (!cacheConfig) {
+      if (!cacheConfig || !cacheConfig.key || !cacheConfig.ttl) {
         return handler(req);
       }
 
-      const cacheKey = generateCacheKey(req, cacheConfig.key);
+      const cacheKey = generateCacheKey(req, cacheConfig.key!);
       
       // Try to get cached response
       const cachedResponse = memoryCache.get(cacheKey);
@@ -55,7 +62,7 @@ export function withAPICache(config?: { ttl?: number; key?: string }) {
           headers: {
             'Content-Type': 'application/json',
             'X-Cache': 'HIT',
-            'Cache-Control': `public, max-age=${Math.floor(cacheConfig.ttl / 1000)}`,
+            'Cache-Control': `public, max-age=${Math.floor((cacheConfig.ttl ?? 60 * 60 * 1000) / 1000)}`,
           },
         });
       }
@@ -78,7 +85,7 @@ export function withAPICache(config?: { ttl?: number; key?: string }) {
           headers: {
             'Content-Type': 'application/json',
             'X-Cache': 'MISS',
-            'Cache-Control': `public, max-age=${Math.floor(cacheConfig.ttl / 1000)}`,
+            'Cache-Control': `public, max-age=${Math.floor((cacheConfig.ttl ?? 60 * 60 * 1000) / 1000)}`,
           },
         });
       } catch (error) {
@@ -88,6 +95,9 @@ export function withAPICache(config?: { ttl?: number; key?: string }) {
     };
   };
 }
+
+// Alias for compatibility with API route imports
+export const withCache = withAPICache;
 
 // Cache invalidation helper
 export function invalidateAPICache(pattern: string, userId?: string) {
@@ -149,7 +159,8 @@ export class RateLimiter {
 
   cleanup() {
     const now = Date.now();
-    for (const [key, attempt] of this.attempts.entries()) {
+    for (const entry of Array.from(this.attempts.entries())) {
+      const [key, attempt] = entry;
       if (now > attempt.resetTime) {
         this.attempts.delete(key);
       }
@@ -160,7 +171,7 @@ export class RateLimiter {
 // Global rate limiter instance
 export const globalRateLimiter = new RateLimiter();
 
-// Cleanup expired rate limits every 5 minutes
+// Cleanup expired rate limits every 5 minutes (Node.js only)
 if (typeof window === 'undefined') {
   setInterval(() => {
     globalRateLimiter.cleanup();

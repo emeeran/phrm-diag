@@ -9,7 +9,7 @@ import { VoiceInput } from '@/components/mobile/voice-input'
 import { CameraCapture } from '@/components/mobile/camera-capture'
 import { useSwipe } from '@/hooks/use-swipe'
 import { useOfflineStatus } from '@/hooks/use-offline'
-import { Smartphone, Gesture, Mic, Camera, PanelRight, Settings, ArrowLeft } from 'lucide-react'
+import { Smartphone, Hand, Mic, Camera, PanelRight, Settings, ArrowLeft } from 'lucide-react'
 
 export default function MobileFeatureDemoPage() {
   const [showCamera, setShowCamera] = useState(false)
@@ -91,7 +91,7 @@ export default function MobileFeatureDemoPage() {
     <Card key="gestures" className="h-full" {...swipeHandlers}>
       <CardHeader>
         <div className="flex items-center space-x-2">
-          <Gesture className="h-5 w-5 text-blue-600" />
+          <Hand className="h-5 w-5 text-blue-600" />
           <CardTitle>Touch & Gestures</CardTitle>
         </div>
         <CardDescription>

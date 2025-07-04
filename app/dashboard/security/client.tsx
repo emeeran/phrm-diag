@@ -1,13 +1,13 @@
 'use client';
 
-import SecuritySettingsPage from './page';
 import { Suspense } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
+import SecuritySettings from './security-component';
 
 export default function SecuritySettingsWrapper() {
   return (
     <Suspense fallback={<SecuritySettingsSkeleton />}>
-      <SecuritySettingsPage />
+      <SecuritySettings />
     </Suspense>
   );
 }

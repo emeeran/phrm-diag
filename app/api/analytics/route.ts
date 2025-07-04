@@ -10,54 +10,52 @@ import { getConnectionPool } from '@/lib/connection-pool';
  * Get a list of all health analyses for the user
  * GET /api/analytics/
  */
-export async function GET(req: NextRequest) {
-  return withCache(async () => {
-    try {
-      const session = await getServerSession(authOptions);
+const analyticsHandler = async (req: NextRequest) => {
+  try {
+    const session = await getServerSession(authOptions);
 
-      if (!session || !session.user) {
-        return NextResponse.json(
-          { error: 'You must be signed in to access this endpoint' },
-          { status: 401 }
-        );
-      }
-
-      const userId = session.user.id;
-      const prisma = await getConnectionPool();
-
-      // Optimized query with proper indexing and selective fields
-      const analyses = await optimizedPrismaClient.findManyOptimized(
-        'healthAnalysis',
-        {
-          where: { userId },
-          orderBy: { createdAt: 'desc' },
-          select: {
-            id: true,
-            summary: true,
-            analysisType: true,
-            createdAt: true,
-            recordsAnalyzed: true,
-          },
-        },
-        { 
-          enableCache: true,
-          ttl: 5 * 60 * 1000, // 5 minutes cache
-          queryHint: 'analytics_list'
-        }
-      );
-
-      return NextResponse.json(analyses);
-    } catch (error) {
-      console.error('Error retrieving analytics:', error);
+    if (!session || !session.user) {
       return NextResponse.json(
-        { error: 'Failed to retrieve health analytics' },
-        { status: 500 }
+        { error: 'You must be signed in to access this endpoint' },
+        { status: 401 }
       );
     }
-  }, {
-    cacheKey: `analytics-list-${req.nextUrl.searchParams.toString()}`,
-    ttl: 5 * 60 * 1000, // 5 minutes
-    revalidateOnStale: true,
-    tags: ['analytics', 'user-data']
-  }) as Promise<CacheResponse>;
-}
+
+    const userId = session.user.id;
+    const prisma = await getConnectionPool();
+
+    // Optimized query with proper indexing and selective fields
+    const analyses = await optimizedPrismaClient.findManyOptimized(
+      'healthAnalysis',
+      {
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          summary: true,
+          analysisType: true,
+          createdAt: true,
+          recordsAnalyzed: true,
+        },
+      },
+      {
+        enableCache: true,
+        ttl: 5 * 60 * 1000, // 5 minutes cache
+        queryHint: 'analytics_list'
+      }
+    );
+
+    return NextResponse.json(analyses);
+  } catch (error) {
+    console.error('Error retrieving analytics:', error);
+    return NextResponse.json(
+      { error: 'Failed to retrieve health analytics' },
+      { status: 500 }
+    );
+  }
+};
+
+export const GET = withCache({
+  ttl: 5 * 60 * 1000, // 5 minutes
+  key: 'analytics'
+})(analyticsHandler);
